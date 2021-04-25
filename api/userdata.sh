@@ -33,17 +33,18 @@ yum install -y nodejs
 yum install -y git
 mkdir -p ${APP_DIR}
 git clone ${APP_REPOSITORY} ${APP_DIR}
-cd ${APP_DIR}
+rm -rf ${APP_DIR}/web
+cd ${APP_DIR}/api
 rm userdata.sh
 npm install
 
 # Configure CloudWatch agent
 yum install -y amazon-cloudwatch-agent
-mv ${APP_DIR}/amazon-cloudwatch-agent.json /opt/aws/amazon-cloudwatch-agent/etc/
+mv ${APP_DIR}/api/amazon-cloudwatch-agent.json /opt/aws/amazon-cloudwatch-agent/etc/
 systemctl start amazon-cloudwatch-agent
 systemctl enable amazon-cloudwatch-agent
 
 # Start app
-cd ${APP_DIR}
+cd ${APP_DIR}/api
 source /etc/profile.d/env_vars.sh
 npm start
