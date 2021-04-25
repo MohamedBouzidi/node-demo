@@ -1,0 +1,21 @@
+{
+    "agent": {
+        "region": "us-east-1",
+        "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+    },
+    "logs": {
+        "logs_collected": {
+            "files": {
+                "collect_list": [
+                    {
+                        "file_path": "/var/log/demo_app.log",
+                        "log_group_name": "demo_app",
+                        "log_stream_name": "demo_app",
+                        "timezone": "Local"
+                    }
+                ]
+            }
+        },
+        "force_flush_interval": 15
+    }
+}
