@@ -1,0 +1,87 @@
+import React, { useState } from 'react';
+import { makeStyles } from '@material-ui/core/styles';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import Divider from '@material-ui/core/Divider';
+import PersonIcon from '@material-ui/icons/Person';
+import EditIcon from '@material-ui/icons/Edit';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
+import Typography from '@material-ui/core/Typography';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+
+const useStyles = makeStyles(theme => ({
+    root: {
+        width: '100%',
+        maxWidth: 360,
+        backgroundColor: theme.palette.background.paper,
+    },
+    container: {
+        display: 'flex',
+        flexFlow: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'lightblue',
+        height: '100vh',
+    },
+    list: {
+        maxHeight: '210px',
+        overflowY: 'scroll',
+        overflowX: 'hidden',
+    },
+    title: {
+        margin: theme.spacing(4, 0, 2),
+        color: 'white',
+    },
+}));
+
+function App() {
+    const classes = useStyles();
+    const [selectedPerson, setSelectedPerson] = useState(null);
+
+    const selectPerson = person => {
+        setSelectedPerson(person);
+    };
+
+    return (
+        <div className={classes.container}>
+            <Typography variant="h4" className={classes.title}>
+                People
+            </Typography>
+            <div className={classes.root}>
+                <List
+                    component="nav"
+                    className={classes.list}
+                    aria-label="main mailbox folders"
+                >
+                    {people.map(p => (
+                        <ListItem button onClick={() => selectPerson(p)}>
+                            <ListItemIcon>
+                                <PersonIcon />
+                            </ListItemIcon>
+                            <ListItemText primary={p.name} />
+                            <EditIcon />
+                            <DeleteOutlineIcon />
+                        </ListItem>
+                    ))}
+                </List>
+                <Divider />
+                <Card>
+                    <CardContent>
+                        {selectedPerson ? (
+                            <Typography>
+                                {selectedPerson.name} - {selectedPerson.age}
+                            </Typography>
+                        ) : (
+                            <Typography>Hello There</Typography>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+export default App;
