@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Basic setup for Demo
+
+Parameters:
+  VPCRange:
+    Type: String
+    Default: 10.10.0.0/16
+    Description: VPC Network Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  PublicSubnetARange:
+    Type: String
+    Default: 10.10.1.0/24
+    Description: Public Subnet A Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  PublicSubnetBRange:
+    Type: String
+    Default: 10.10.2.0/24
+    Description: Public Subnet B Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  AppSubnetARange:
+    Type: String
+    Default: 10.10.3.0/24
+    Description: App Subnet A Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  AppSubnetBRange:
+    Type: String
+    Default: 10.10.4.0/24
+    Description: App Subnet B Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  AppPort:
+    Type: Number
+    Default: 8080
+    Description: App port for Security Group
+  DBSubnetARange:
+    Type: String
+    Default: 10.10.5.0/24
+    Description: DB Subnet A Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  DBSubnetBRange:
+    Type: String
+    Default: 10.10.6.0/24
+    Description: DB Subnet B Range
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range
+  DBPort:
+    Type: Number
+    Default: 3306
+    Description: DB port for Security Group
+  RedisPort:
+    Type: Number
+    Default: 6379
+    Description: Redis port for Security Group
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !Ref VPCRange
+      Tags:
+        - Key: Name
+          Value: Demo
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Demo
+
+  InternetGatewayToVPC:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  InternetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: '0.0.0.0/0'
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetARange
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref "AWS::Region" ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnetA
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetBRange
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref "AWS::Region" ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnetB
+
+  PublicSubnetAToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+
+  PublicSubnetBToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: 'Allows HTTP/HTTPS traffic'
+      GroupName: PublicSG
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: -1
+          ToPort: -1
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: 'tcp'
+        - CidrIp: '0.0.0.0/0'
+          FromPort: 443
+          ToPort: 443
+          IpProtocol: 'tcp'
+
+  NatIp:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayToVPC
+    Properties:
+      Domain: !Ref VPC
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatIp.AllocationId
+      SubnetId: !Ref PublicSubnetA
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  NatRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: '0.0.0.0/0'
+      RouteTableId: !Ref PrivateRouteTable
+      NatGatewayId: !Ref NatGateway
+
+  AppSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref AppSubnetARange
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref "AWS::Region" ]
+      Tags:
+        - Key: Name
+          Value: AppSubnetA
+
+  AppSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref AppSubnetBRange
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref "AWS::Region" ]
+      Tags:
+        - Key: Name
+          Value: AppSubnetB
+
+  AppSubnetAToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref AppSubnetA
+
+  AppSubnetBToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref AppSubnetB
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: 'Allows app access from PublicSG'
+      GroupName: AppSG
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: -1
+          ToPort: -1
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref PublicSecurityGroup
+          FromPort: !Ref AppPort
+          ToPort: !Ref AppPort
+          IpProtocol: 'tcp'
+
+  DBSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref DBSubnetARange
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref "AWS::Region" ]
+      Tags:
+        - Key: Name
+          Value: DBSubnetA
+
+  DBSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref DBSubnetBRange
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref "AWS::Region" ]
+      Tags:
+        - Key: Name
+          Value: DBSubnetB
+
+  DBSubnetAToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref DBSubnetA
+
+  DBSubnetBToRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref DBSubnetB
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: 'Allows db access from AppSG'
+      GroupName: 'DBSG'
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: -1
+          ToPort: -1
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AppSecurityGroup
+          FromPort: !Ref DBPort
+          ToPort: !Ref DBPort
+          IpProtocol: 'tcp'
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: 'Allows redis access from AppSG'
+      GroupName: 'RedisSG'
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: -1
+          ToPort: -1
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AppSecurityGroup
+          FromPort: !Ref RedisPort
+          ToPort: !Ref RedisPort
+          IpProtocol: 'tcp'
