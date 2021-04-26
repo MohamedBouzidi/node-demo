@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -11,6 +11,7 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import Typography from '@material-ui/core/Typography';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
+import { API_URL } from './config.json';
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -40,6 +41,13 @@ const useStyles = makeStyles(theme => ({
 function App() {
     const classes = useStyles();
     const [selectedPerson, setSelectedPerson] = useState(null);
+    const [people, setPeople] = useState([]);
+
+    useEffect(() => {
+        fetch(API_URL + '/people')
+            .then(res => res.json())
+            .then(setPeople);
+    }, []);
 
     const selectPerson = person => {
         setSelectedPerson(person);
@@ -56,16 +64,20 @@ function App() {
                     className={classes.list}
                     aria-label="main mailbox folders"
                 >
-                    {people.map(p => (
-                        <ListItem button onClick={() => selectPerson(p)}>
-                            <ListItemIcon>
-                                <PersonIcon />
-                            </ListItemIcon>
-                            <ListItemText primary={p.name} />
-                            <EditIcon />
-                            <DeleteOutlineIcon />
-                        </ListItem>
-                    ))}
+                    {people ? (
+                        people.map(p => (
+                            <ListItem button onClick={() => selectPerson(p)}>
+                                <ListItemIcon>
+                                    <PersonIcon />
+                                </ListItemIcon>
+                                <ListItemText primary={p.name} />
+                                <EditIcon />
+                                <DeleteOutlineIcon />
+                            </ListItem>
+                        ))
+                    ) : (
+                        <Typography>Loading...</Typography>
+                    )}
                 </List>
                 <Divider />
                 <Card>
