@@ -7,6 +7,7 @@ const express = require('express');
 const { promisify } = require('util');
 const path = require('path');
 const winston = require('winston');
+const cors = require('cors');
 
 const client = redis.createClient({
     host: process.env.REDIS_URL,
@@ -140,6 +141,8 @@ const runApplication = async () => {
     const app = express();
     const port = process.env.APP_PORT || 3000;
     const logger = initLogger();
+
+    app.use(cors());
 
     app.use(
         morgan(
