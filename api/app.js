@@ -143,6 +143,8 @@ const runApplication = async () => {
     const logger = initLogger();
 
     app.use(cors());
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: false }));
 
     app.use(
         morgan(
@@ -170,11 +172,7 @@ const runApplication = async () => {
     });
 
     app.post('/person', async (req, res) => {
-        const person = await insertPerson(
-            uuid.v4(),
-            req.body.name,
-            req.body.age
-        );
+        const person = await insertPerson(req.body.name, req.body.age);
         res.json(person);
     });
 
