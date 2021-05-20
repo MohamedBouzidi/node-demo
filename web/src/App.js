@@ -53,6 +53,15 @@ function App() {
         setSelectedPerson(person);
     };
 
+    const deletePerson = person => {
+        fetch(API_URL + '/person/' + person.id)
+            .then(res => res.json())
+            .then(() => {
+                const newPeople = people.filter(p => p.id !== person.id);
+                setPeople(newPeople);
+            });
+    }
+
     return (
         <div className={classes.container}>
             <Typography variant="h4" className={classes.title}>
@@ -72,7 +81,7 @@ function App() {
                                 </ListItemIcon>
                                 <ListItemText primary={p.name} />
                                 <EditIcon />
-                                <DeleteOutlineIcon />
+                                <DeleteOutlineIcon onClick={() => console.log('delete this')} />
                             </ListItem>
                         ))
                     ) : (
