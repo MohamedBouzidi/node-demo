@@ -274,6 +274,15 @@ Resources:
           ToPort: !Ref DBPort
           IpProtocol: 'tcp'
 
+  DBSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DBSecurityGroup
+      SourceSecurityGroupId: !Ref DBSecurityGroup
+      FromPort: -1
+      ToPort: -1
+      IpProtocol: '-1'
+
   RedisSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:

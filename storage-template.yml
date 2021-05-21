@@ -8,12 +8,20 @@ Parameters:
   CacheSubnetGroupName:
     Type: String
     Default: 'demoSG'
+  DBName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/node-demo/dev/db/database'
   DBUsername:
     Type: AWS::SSM::Parameter::Value<String>
     Default: '/node-demo/dev/db/username'
   DBPassword:
     Type: AWS::SSM::Parameter::Value<String>
     Default: '/node-demo/dev/db/password'
+  SourceBucket:
+    Type: String
+  LayerKey:
+    Type: String
+    Default: my-layer.zip
 
 Resources:
   Database:
@@ -38,6 +46,120 @@ Resources:
       SubnetIds:
         - !ImportValue DBSubnetA
         - !ImportValue DBSubnetB
+
+  CreateDatabaseLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes: [ 'python3.8' ]
+      Content:
+        S3Bucket: !Ref SourceBucket
+        S3Key: !Ref LayerKey
+      Description: 'PyMySQL and Cfnresponse for Python'
+      LayerName: 'pymysql-cfnresponse'
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: logs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      - PolicyName: networking
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:CreateNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DeleteNetworkInterface
+            - ec2:DescribeSecurityGroups
+            - ec2:DescribeSubnets
+            - ec2:DescribeVpcs
+            Resource: '*'
+
+  CreateDatabaseFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          import sys
+          import pymysql
+          import logging
+          import cfnresponse
+
+          database = os.environ['DATABASE']
+          username = os.environ['USERNAME']
+          password = os.environ['PASSWORD']
+          endpoint = os.environ['ENDPOINT']
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          try:
+              conn = pymysql.connect(host=endpoint, user=username, passwd=password, connect_timeout=5)
+          except pymysql.MySQLError as e:
+              logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
+              logger.error(e)
+              sys.exit()
+
+          logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
+          def lambda_handler(event, context):
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Create':
+                  try:
+                      with conn.cursor() as cur:
+                          cur.execute("CREATE DATABASE " + database)
+                      conn.commit()
+                  except Exception as e:
+                      logger.error("ERROR: Unable to create database")
+                      logger.error(e)
+                      status = cfnresponse.FAILED
+
+              cfnresponse.send(event, context, status, {})
+      Handler: 'index.lambda_handler'
+      Runtime: 'python3.8'
+      Timeout: 60
+      MemorySize: 128
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          DATABASE: !Ref DBName
+          USERNAME: !Ref DBUsername
+          PASSWORD: !Ref DBPassword
+          ENDPOINT: !GetAtt Database.Endpoint.Address
+      VpcConfig:
+        SecurityGroupIds: [ !ImportValue DBSecurityGroup ]
+        SubnetIds:
+          - !ImportValue DBSubnetA
+          - !ImportValue DBSubnetB
+      Layers:
+        - !Ref CreateDatabaseLayer
+
+  CreateInitialDatabase:
+    Type: Custom::CreateDatabase
+    Properties:
+      ServiceToken: !GetAtt CreateDatabaseFunction.Arn
 
   Cache:
     Type: AWS::ElastiCache::CacheCluster
