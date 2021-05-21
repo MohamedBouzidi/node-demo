@@ -290,3 +290,35 @@ Resources:
           FromPort: !Ref RedisPort
           ToPort: !Ref RedisPort
           IpProtocol: 'tcp'
+
+Outputs:
+  DBSubnetA:
+    Description: DB Subnet A
+    Value: !Ref DBSubnetA
+    Export:
+      Name: DBSubnetA
+  DBSubnetB:
+    Description: DB Subnet B
+    Value: !Ref DBSubnetB
+    Export:
+      Name: DBSubnetB
+  DBSecurityGroup:
+    Description: DB Security Group
+    Value: !GetAtt DBSecurityGroup.GroupId
+    Export:
+      Name: DBSecurityGroup
+  DBPort:
+    Description: DB Port
+    Value: !Ref DBPort
+    Export:
+      Name: DBPort
+  RedisSecurityGroup:
+    Description: Redis Security Group
+    Value: !GetAtt RedisSecurityGroup.GroupId
+    Export:
+      Name: RedisSecurityGroup
+  RedisPort:
+    Description: Redis Port
+    Value: !Ref RedisPort
+    Export:
+      Name: RedisPort

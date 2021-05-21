@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Database and Cache cluster for Demo
+
+Parameters:
+  DBSubnetGroupName:
+    Type: String
+    Default: 'demoSG'
+  CacheSubnetGroupName:
+    Type: String
+    Default: 'demoSG'
+  DBUsername:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/node-demo/dev/db/username'
+  DBPassword:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/node-demo/dev/db/password'
+
+Resources:
+  Database:
+    Type: AWS::RDS::DBInstance
+    DependsOn: DBSubnetGroup
+    Properties:
+      VPCSecurityGroups: [ !ImportValue DBSecurityGroup ]
+      AllocatedStorage: '5'
+      DBInstanceClass: 'db.t2.micro'
+      DBSubnetGroupName: !Ref DBSubnetGroupName
+      Engine: 'MySQL'
+      Port: !ImportValue DBPort
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+    DeletionPolicy: Delete
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: 'subnet group for demo'
+      DBSubnetGroupName: !Ref DBSubnetGroupName
+      SubnetIds:
+        - !ImportValue DBSubnetA
+        - !ImportValue DBSubnetB
+
+  Cache:
+    Type: AWS::ElastiCache::CacheCluster
+    DependsOn: CacheSubnetGroup
+    Properties:
+      Engine: 'redis'
+      CacheNodeType: 'cache.t2.micro'
+      CacheSubnetGroupName: !Ref CacheSubnetGroupName
+      NumCacheNodes: 1
+      Port: !ImportValue RedisPort
+      VpcSecurityGroupIds:
+        - !ImportValue RedisSecurityGroup
+
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: !Ref CacheSubnetGroupName
+      Description: 'subnet group for demo'
+      SubnetIds:
+        - !ImportValue DBSubnetA
+        - !ImportValue DBSubnetB
+
+Outputs:
+  DatabaseEndpoint:
+    Description: 'Database endpoint address'
+    Value:
+      Fn::Join:
+        - ':'
+        - - !GetAtt Database.Endpoint.Address
+          - !GetAtt Database.Endpoint.Port
+  CacheEndpoint:
+    Description: 'Cache endpoint address'
+    Value:
+      Fn::Join:
+        - ':'
+        - - !GetAtt Cache.RedisEndpoint.Address
+          - !GetAtt Cache.RedisEndpoint.Port
