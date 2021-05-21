@@ -2,13 +2,32 @@
 
 APP_DIR="/usr/src/app"
 APP_REPOSITORY="https://github.com/MohamedBouzidi/node-demo"
-DATABASE_URL="localhost"
-DATABASE_USER="admindemo"
-DATABASE_PASS="admindemo"
-DATABASE_NAME="demodb"
-REDIS_URL="localhost"
-REDIS_PORT="6379"
 APP_PORT="8080"
+
+# Retrieve parameters from SSM
+yum install -y jq
+AWS_REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed -e 's/[a-z]$//g')
+get_parameters () {
+    PARAMS=$(aws ssm get-parameters-by-path --path ${1} --region us-east-1 --query "Parameters[].{ Name: Name, Value: Value }")
+    for param in $(echo $PARAMS | jq -c '.[]'); do
+        name=$(echo $param | jq -r '.Name' | rev | cut -d/ -f1 | rev)
+        value=$(echo $param | jq -r '.Value')
+        echo $name=$value >> envars
+    done
+    source envars
+    unset PARAMS
+    rm envars
+}
+
+get_parameters "/node-demo/dev/db/"
+DATABASE_URL=$endpoint
+DATABASE_USER=$username
+DATABASE_PASS=$password
+DATABASE_NAME=$database
+
+get_parameters "/node-demo/dev/cache/"
+REDIS_URL=$endpoint
+REDIS_PORT=$port
 
 # Save environment variables
 cat <<EOF > /etc/profile.d/env_vars.sh
