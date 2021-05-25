@@ -114,19 +114,19 @@ Resources:
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
 
-          try:
-              conn = pymysql.connect(host=endpoint, user=username, passwd=password, connect_timeout=5)
-          except pymysql.MySQLError as e:
-              logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-              logger.error(e)
-              sys.exit()
-
-          logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
-
           def lambda_handler(event, context):
               status = cfnresponse.SUCCESS
 
               if event['RequestType'] == 'Create':
+                  try:
+                      conn = pymysql.connect(host=endpoint, user=username, passwd=password, connect_timeout=5)
+                  except pymysql.MySQLError as e:
+                      logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
+                      logger.error(e)
+                      status = cfnresponse.FAILED
+
+                  logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
                   try:
                       with conn.cursor() as cur:
                           cur.execute("CREATE DATABASE " + database)
