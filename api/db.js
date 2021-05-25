@@ -63,6 +63,7 @@ const insertPerson = async (name, phone) => {
             `INSERT INTO people (id, name, phone) VALUES ('${uuid.v4()}', '${name}', ${phone})`
         );
     } catch (e) {
+        console.log(e);
         return e;
     }
 };
