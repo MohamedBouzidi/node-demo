@@ -93,7 +93,7 @@ function App() {
                     <CardContent>
                         {selectedPerson ? (
                             <Typography>
-                                {selectedPerson.name} - {selectedPerson.age}
+                                {selectedPerson.name} - {selectedPerson.phone}
                             </Typography>
                         ) : (
                             <Typography>Hello There</Typography>
