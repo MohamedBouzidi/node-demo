@@ -50,7 +50,9 @@ function App() {
     }, []);
 
     const selectPerson = person => {
-        setSelectedPerson(person);
+	fetch(API_URL + '/person/' + person.id)
+	    .then(res => res.json())
+	    .then(person => { setSelectedPerson(person[0]); });
     };
 
     const deletePerson = person => {
