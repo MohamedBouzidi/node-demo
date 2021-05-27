@@ -7,7 +7,7 @@ const db = require('./db');
     
     for (let i = 0; i < numberOfPeople; i++) {
         people.push({
-            name: `${faker.name.firstName()} ${faker.name.lastName()}`,
+            name: `${faker.name.firstName().replace('\'', '\\\'')} ${faker.name.lastName().replace('\'', '\\\'')}`,
             phone: faker.phone.phoneNumber()
         });
     }
